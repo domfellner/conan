@@ -62,18 +62,18 @@ install(TARGETS {{name}} DESTINATION "."
 source_h = """#pragma once
 
 #ifdef WIN32
-  #define {{name}}_EXPORT __declspec(dllexport)
+  #define {{object_name or name}}_EXPORT __declspec(dllexport)
 #else
-  #define {{name}}_EXPORT
+  #define {{object_name or name}}_EXPORT
 #endif
 
-{{name}}_EXPORT void {{name}}();
+{{object_name or name}}_EXPORT void {{object_name or name}}();
 """
 
 source_cpp = r"""#include <iostream>
 #include "{{name}}.h"
 
-void {{name}}(){
+void {{object_name or name}}(){
     #ifdef NDEBUG
     std::cout << "{{name}}/{{version}}: Hello World Release!\n";
     #else
@@ -202,7 +202,7 @@ target_link_libraries(example {{name}}::{{name}})
 test_main = """#include "{{name}}.h"
 
 int main() {
-    {{name}}();
+    {{object_name or name}}();
 }
 """
 
