@@ -221,14 +221,14 @@ target_link_libraries(example ${CONAN_LIBS})
 test_main = """#include "{name}.h"
 
 int main() {{
-    {name}();
+    {symbol_name}();
 }}
 """
 
 hello_c = """ #include <stdio.h>
 #include "{name}.h"
 
-void {name}() {{
+void {symbol_name}() {{
     int class = 0;  //This will be an error in C++
     #ifdef NDEBUG
         printf("{name}/{version}-(pure C): Hello World Release!\\n");
@@ -241,18 +241,18 @@ void {name}() {{
 hello_h = """#pragma once
 
 #ifdef WIN32
-  #define {name}_EXPORT __declspec(dllexport)
+  #define {symbol_name}_EXPORT __declspec(dllexport)
 #else
-  #define {name}_EXPORT
+  #define {symbol_name}_EXPORT
 #endif
 
-{name}_EXPORT void {name}();
+{symbol_name}_EXPORT void {symbol_name}();
 """
 
 hello_cpp = """#include <iostream>
 #include "{name}.h"
 
-void {name}(){{
+void {symbol_name}(){{
     #ifdef NDEBUG
     std::cout << "{name}/{version}: Hello World Release!" <<std::endl;
     #else
@@ -326,6 +326,7 @@ def cmd_new(ref, header=False, pure_c=False, test=False, exports_sources=False, 
         name, version, user, channel, revision = get_reference_fields(ref, user_channel_input=False)
         # convert "package_name" -> "PackageName"
         package_name = re.sub(r"(?:^|[\W_])(\w)", lambda x: x.group(1).upper(), name).rstrip("+-.")
+        symbol_name = package_name[0].lower() + package_name[1:]
     except ValueError:
         raise ConanException("Bad parameter, please use full package name,"
                              "e.g.: MyLib/1.2.3@user/testing")
@@ -355,8 +356,10 @@ def cmd_new(ref, header=False, pure_c=False, test=False, exports_sources=False, 
             files = {"conanfile.py": conanfile_sources.format(name=name, version=version,
                                                               package_name=package_name,
                                                               configure=""),
-                     "src/{}.cpp".format(name): hello_cpp.format(name=name, version=version),
-                     "src/{}.h".format(name): hello_h.format(name=name, version=version),
+                     "src/{}.cpp".format(name): hello_cpp.format(name=name, version=version,
+                                                                 symbol_name=symbol_name),
+                     "src/{}.h".format(name): hello_h.format(name=name, version=version,
+                                                             symbol_name=symbol_name),
                      "src/CMakeLists.txt": cmake.format(name=name, version=version)}
         else:
             config = ("\n    def configure(self):\n"
@@ -365,8 +368,10 @@ def cmd_new(ref, header=False, pure_c=False, test=False, exports_sources=False, 
             files = {"conanfile.py": conanfile_sources.format(name=name, version=version,
                                                               package_name=package_name,
                                                               configure=config),
-                     "src/{}.c".format(name): hello_c.format(name=name, version=version),
-                     "src/{}.h".format(name): hello_h.format(name=name, version=version),
+                     "src/{}.c".format(name): hello_c.format(name=name, version=version,
+                                                             symbol_name=symbol_name),
+                     "src/{}.h".format(name): hello_h.format(name=name, version=version,
+                                                             symbol_name=symbol_name),
                      "src/CMakeLists.txt": cmake_pure_c.format(name=name, version=version)}
     elif bare:
         files = {"conanfile.py": conanfile_bare.format(name=name, version=version,
@@ -385,14 +390,15 @@ def cmd_new(ref, header=False, pure_c=False, test=False, exports_sources=False, 
                                         name=name,
                                         version=version,
                                         package_name=package_name,
+                                        symbol_name=symbol_name,
                                         defines=defines)
             files = {"conanfile.py": replaced}
         elif template == "cmake_lib":
             from conans.assets.templates.new_v2_cmake import get_cmake_lib_files
-            files = get_cmake_lib_files(name, version, package_name)
+            files = get_cmake_lib_files(name, version, package_name, symbol_name)
         elif template == "cmake_exe":
             from conans.assets.templates.new_v2_cmake import get_cmake_exe_files
-            files = get_cmake_exe_files(name, version, package_name)
+            files = get_cmake_exe_files(name, version, package_name, symbol_name)
         else:
             if not os.path.isabs(template):
                 template = os.path.join(cache.cache_folder, "templates", "command/new", template)
@@ -403,6 +409,7 @@ def cmd_new(ref, header=False, pure_c=False, test=False, exports_sources=False, 
                                                  name=name,
                                                  version=version,
                                                  package_name=package_name,
+                                                 symbol_name=symbol_name,
                                                  defines=defines)
     else:
         files = {"conanfile.py": conanfile.format(name=name, version=version,
@@ -413,11 +420,12 @@ def cmd_new(ref, header=False, pure_c=False, test=False, exports_sources=False, 
                                                                    user=user, channel=channel,
                                                                    package_name=package_name)
         if pure_c:
-            files["test_package/example.c"] = test_main.format(name=name)
+            files["test_package/example.c"] = test_main.format(name=name, symbol_name=symbol_name)
             files["test_package/CMakeLists.txt"] = test_cmake_pure_c
         else:
             include_name = name if exports_sources else "hello"
-            files["test_package/example.cpp"] = test_main.format(name=include_name)
+            files["test_package/example.cpp"] = test_main.format(name=include_name,
+                                                                 symbol_name=symbol_name)
             files["test_package/CMakeLists.txt"] = test_cmake
 
     if gitignore:
